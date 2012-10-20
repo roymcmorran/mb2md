@@ -142,7 +142,7 @@
 # mb2md -h
 # mb2md [-c] [-K] [-U|-u] [-S] [-W] -m [-d destdir]
 # mb2md [-c] [-K] [-U|-u] [-S] [-W] -s sourcefile [-d destdir]
-# mb2md [-c] [-K] [-U|-u] [-S] [-W] -s sourcedir [-l wu-mailboxlist] [-R|-f somefolder] [-d destdir] [-r strip_extension]
+# mb2md [-c] [-K] [-U|-u] [-S] [-W] -s sourcedir [-l wu-mailboxlist] [-R|-f somefolder] [-d destdir] [-r strip_extension] [-x strip_dir_extension]
 #
 #  -c            use the Content-Length: headers (if present) to find the
 #                beginning of the next message
@@ -245,6 +245,11 @@
 #                the original mailbox file name before creating
 #                the corresponding maildir. The extension must be
 #                given without the leading dot ("."). See the example below.
+#
+#  -x strip_dir_ext If defined this extension will be stripped from
+#                directory names before creating the corresponding
+#                folder. The extension must be given without the leading
+#                dot ("."), e.g. -x sbd for Thunderbird folders
 #
 #  -l WU-file    File containing the list of subscribed folders.  If
 #                migrating from WU-IMAP the list of subscribed folders will
@@ -466,11 +471,11 @@ sub usage() {
     print "       mb2md -h\n";
     print "       mb2md [-c] [-K] [-U|-u] [-S] [-W] -m [-d destdir]\n";
     print "       mb2md [-c] [-K] [-U|-u] [-S] [-W] -s sourcefile [-d destdir]\n";
-    die   "       mb2md [-c] [-K] [-U|-u] [-S] [-W] -s sourcedir [-l wu-mailboxlist] [-R|-f somefolder] [-d destdir] [-r strip_extension]\n";
+    die   "       mb2md [-c] [-K] [-U|-u] [-S] [-W] -s sourcedir [-l wu-mailboxlist] [-R|-f somefolder] [-d destdir] [-r strip_ext] [-x strip_dir_ext]\n";
 }
 		    # get options
 my %opts;
-getopts('d:f:chms:r:l:RUuKSW', \%opts) || usage();
+getopts('d:f:chms:r:x:l:RUuKSW', \%opts) || usage();
 usage() if ( defined($opts{h})
 	|| (!defined($opts{m}) && !defined($opts{s})) );
 
@@ -484,6 +489,7 @@ my $mbdir = undef;	# this is an mbox dir relative to the $mbroot
 my $mbfile = undef;	# this is an mbox file
 my $dest = undef;
 my $strip_ext = undef;
+my $strip_dir_ext = undef;
 my $use_cl = undef;	# defines whether we use the Content-Length: header if present
 my $create_dovecot_keywords = 0; # defines whether we generate a Dovecot-compatible keywords file
 my $create_dovecot_uidlist = 0;	# defines whether we generate a Dovecot-compatible uidlist UID file
@@ -596,6 +602,8 @@ elsif (defined($opts{s}))
 defined($opts{d}) && ($dest = $opts{d}) || ($dest = "Maildir");
 # see if we have anything to strip
 defined($opts{r}) && ($strip_ext = $opts{r});
+# see if we have anything to strip
+defined($opts{x}) && ($strip_dir_ext = $opts{x});
 # No '-f' with '-R'
 if((defined($opts{R}))&&(defined($opts{f}))) { die "No recursion with \"-f\"";}
 # Get list of folders
@@ -750,12 +758,18 @@ sub convertit
 	my $destinationdir = $dir;
 	my $temppath = $oldpath;
 
+	# Strip destination directory extension	if requested
+	defined($strip_dir_ext) && ($destinationdir =~ s/\.$strip_dir_ext$//);
+	# Also strip directory extension from all ancestors
+	defined($strip_dir_ext) && ($temppath =~ s/\.$strip_dir_ext\//\//);
+	defined($strip_dir_ext) && ($temppath =~ s/\.$strip_dir_ext$//);
+
 	# We don't want to have .'s in the $targetfile file
 	# name because they will become directories in the
 	# Maildir. Therefore we convert them to _'s
 	$temppath =~ s/\./\_/g;
 	$destinationdir =~ s/\./\_/g;
-	
+
 	# Appending $oldpath => path is only missing $dest
 	$destinationdir = "$temppath.$destinationdir";
 
