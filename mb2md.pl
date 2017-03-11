@@ -761,7 +761,7 @@ sub convertit
 	# Strip destination directory extension	if requested
 	defined($strip_dir_ext) && ($destinationdir =~ s/\.$strip_dir_ext$//);
 	# Also strip directory extension from all ancestors
-	defined($strip_dir_ext) && ($temppath =~ s/\.$strip_dir_ext\//\//);
+	defined($strip_dir_ext) && ($temppath =~ s/\.$strip_dir_ext\//\//g);
 	defined($strip_dir_ext) && ($temppath =~ s/\.$strip_dir_ext$//);
 
 	# We don't want to have .'s in the $targetfile file
